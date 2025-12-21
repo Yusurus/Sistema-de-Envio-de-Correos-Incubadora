@@ -3,7 +3,12 @@ import os
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'una_clave_secreta_muy_dificil_de_adivinar'
     # Database configuration
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'mysql+pymysql://root:admin@localhost/pruebas_incu'
+    DB_HOST= os.environ.get('DB_HOST')
+    DB_PORT=os.environ.get('DB_PORT')
+    DB_USER=os.environ.get('DB_USER')
+    DB_PASSWORD=os.environ.get('DB_PASSWORD')
+    DB_NAME=os.environ.get('DB_NAME')
+    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://' + DB_USER + ':' + DB_PASSWORD + '@' + DB_HOST + ':' + DB_PORT + '/' + DB_NAME
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Email configuration
