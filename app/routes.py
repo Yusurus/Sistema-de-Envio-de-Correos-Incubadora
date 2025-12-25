@@ -80,25 +80,24 @@ def evento_detalle(event_id):
     # Obtenemos participantes con datos de sus notificaciones
     # Hacemos un Outer Join porque puede que no tengan notificaciones aun
     
-    # Esta consulta trae: Participacion, Participante, y el estado de la ultima notificacion si existe
+    # Esta consulta trae: Participacion, Participante, y el conteo de notificaciones
     query = db.session.query(
         Participacion, 
         Participante,
-        func.max(Notificacion.fecha_envio).label('ultima_notif'),
-        func.max(Notificacion.estado).label('estado_notif') # Simplificacion
+        func.count(Notificacion.id).label('count_notificaciones')
     ).join(Participante).outerjoin(Notificacion).filter(
         Participacion.evento_id == event_id
     ).group_by(Participacion.id, Participante.id).all()
     
     lista_participantes = []
-    for p, part, ult_fecha, est_notif in query:
+    for p, part, count_notif in query:
         lista_participantes.append({
             'participacion_id': p.id,
             'nombre': part.nombre_normalizado,
             'email': part.email,
             'estado_certificado': p.estado_certificado, # Impreso, Generado, etc
             'estado': p.estado,         # PENDIENTE / ENTREGADO
-            'notificado': 'SI' if est_notif == 'Enviado' else 'NO'
+            'num_notificaciones': count_notif
         })
         
     return render_template('evento_detalle.html', evento=evento, participantes=lista_participantes)

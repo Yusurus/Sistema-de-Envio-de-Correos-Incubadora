@@ -62,10 +62,8 @@
             
             <select id="filterNotified" class="block w-full sm:w-40 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
                 <option value="all">Notificación (Todos)</option>
-                <option value="SI">Notificados</option>
-                <option value="NO">No Notificados</option>
-            </select>
-
+            <option value="yes">Notificados</option>
+            <option value="no">No Notificados</option>
             <div class="relative w-full sm:w-64">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i data-lucide="search" class="h-4 w-4 text-gray-400"></i>
@@ -94,7 +92,7 @@
                 {% for p in participantes %}
                 <tr class="hover:bg-gray-50 transition-colors participant-row" 
                     data-status="{{ p.estado }}" 
-                    data-notified="{{ p.notificado }}">
+                    data-notified="{{ 'yes' if p.num_notificaciones > 0 else 'no' }}">
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="flex items-center">
                             <div class="flex-shrink-0 h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold text-sm">
@@ -117,15 +115,15 @@
                     </td>
 
                     <td class="px-6 py-4 whitespace-nowrap text-center">
-                        {% if p.notificado == 'SI' %}
-                            <div class="flex justify-center items-center text-green-600" title="Correo Enviado">
-                                <i data-lucide="check-circle" class="h-5 w-5"></i>
-                                <span class="ml-1 text-xs font-medium">Sí</span>
+                        {% if p.num_notificaciones > 0 %}
+                            <div class="flex justify-center items-center text-green-600" title="Notificado {{ p.num_notificaciones }} veces">
+                                <i data-lucide="mail-check" class="h-5 w-5"></i>
+                                <span class="ml-2 text-lg font-bold">{{ p.num_notificaciones }}</span>
                             </div>
                         {% else %}
                             <div class="flex justify-center items-center text-gray-400" title="Pendiente de envio">
-                                <i data-lucide="clock" class="h-5 w-5"></i>
-                                <span class="ml-1 text-xs font-medium">No</span>
+                                <i data-lucide="mail-x" class="h-5 w-5"></i>
+                                <span class="ml-2 text-lg font-bold">0</span>
                             </div>
                         {% endif %}
                     </td>
