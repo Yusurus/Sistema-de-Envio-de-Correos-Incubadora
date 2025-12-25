@@ -1,0 +1,243 @@
+{% extends "base.html" %} {% block content %}
+
+<div
+  class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8"
+>
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900">Panel de Control</h1>
+    <p class="text-gray-500 text-sm mt-1">
+      Gestión de eventos y entrega de certificados
+    </p>
+  </div>
+
+  <div class="relative w-full md:w-96">
+    <div
+      class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
+    >
+      <i data-lucide="search" class="h-5 w-5 text-gray-400"></i>
+    </div>
+    <input
+      type="text"
+      id="eventSearch"
+      class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm shadow-sm transition-all"
+      placeholder="Buscar evento por nombre..."
+    />
+  </div>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+  <div
+    class="bg-white rounded-xl shadow-sm p-5 border border-gray-100 flex items-center gap-4"
+  >
+    <div class="bg-indigo-50 p-3 rounded-lg text-indigo-600">
+      <i data-lucide="calendar" class="h-6 w-6"></i>
+    </div>
+    <div>
+      <p class="text-sm font-medium text-gray-500">Total Eventos</p>
+      <p class="text-2xl font-bold text-gray-900">
+        {{ metrics.total_eventos }}
+      </p>
+    </div>
+  </div>
+  <div
+    class="bg-white rounded-xl shadow-sm p-5 border border-gray-100 flex items-center gap-4"
+  >
+    <div class="bg-blue-50 p-3 rounded-lg text-blue-600">
+      <i data-lucide="users" class="h-6 w-6"></i>
+    </div>
+    <div>
+      <p class="text-sm font-medium text-gray-500">Participaciones</p>
+      <p class="text-2xl font-bold text-gray-900">
+        {{ metrics.total_participaciones }}
+      </p>
+    </div>
+  </div>
+  <div
+    class="bg-white rounded-xl shadow-sm p-5 border border-gray-100 flex items-center gap-4"
+  >
+    <div class="bg-green-50 p-3 rounded-lg text-green-600">
+      <i data-lucide="check-circle" class="h-6 w-6"></i>
+    </div>
+    <div>
+      <p class="text-sm font-medium text-gray-500">Notif. Enviadas</p>
+      <p class="text-2xl font-bold text-gray-900">
+        {{ metrics.notificaciones_enviadas }}
+      </p>
+    </div>
+  </div>
+  <div
+    class="bg-white rounded-xl shadow-sm p-5 border border-gray-100 flex items-center gap-4"
+  >
+    <div class="bg-orange-50 p-3 rounded-lg text-orange-600">
+      <i data-lucide="printer" class="h-6 w-6"></i>
+    </div>
+    <div>
+      <p class="text-sm font-medium text-gray-500">Cert. Impresos</p>
+      <p class="text-2xl font-bold text-gray-900">
+        {{ metrics.certificados_impresos }}
+      </p>
+    </div>
+  </div>
+</div>
+
+<h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+  <i data-lucide="list" class="h-5 w-5"></i> Listado de Eventos
+</h2>
+
+<div
+  class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+  id="eventsGrid"
+>
+  {% for e in eventos %}
+  <div
+    class="event-card bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-300 flex flex-col overflow-hidden"
+  >
+    <div class="p-5 border-b border-gray-100 bg-gray-50/50">
+      <div class="flex justify-between items-start mb-2">
+        <h3
+          class="event-name text-lg font-bold text-gray-900 line-clamp-2 min-h-[3.5rem]"
+          title="{{ e.nombre }}"
+        >
+          {{ e.nombre }}
+        </h3>
+      </div>
+      <div class="flex items-center text-sm text-gray-500">
+        <i data-lucide="calendar-days" class="h-4 w-4 mr-1.5"></i>
+        {{ e.fecha }}
+      </div>
+    </div>
+
+    <div class="p-5 flex-grow">
+      <div class="grid grid-cols-2 gap-4 text-sm">
+        <div class="flex flex-col">
+          <span class="text-gray-500 text-xs uppercase tracking-wider"
+            >Total</span
+          >
+          <span class="font-semibold text-gray-900"
+            >{{ e.total_participantes }}</span
+          >
+        </div>
+        <div class="flex flex-col">
+          <span
+            class="text-blue-600 text-xs uppercase tracking-wider font-semibold"
+            >Entregados</span
+          >
+          <span class="font-bold text-blue-700">{{ e.total_entregados }}</span>
+        </div>
+        <div class="flex flex-col">
+          <span
+            class="text-green-600 text-xs uppercase tracking-wider font-semibold"
+            >Notificados</span
+          >
+          <span class="font-bold text-green-700"
+            >{{ e.total_notificados }}</span
+          >
+        </div>
+        <div class="flex flex-col">
+          <span
+            class="text-orange-600 text-xs uppercase tracking-wider font-semibold"
+            >Pendientes</span
+          >
+          <span class="font-bold text-orange-700"
+            >{{ e.pendientes_notificar }}</span
+          >
+        </div>
+      </div>
+
+      <div
+        class="mt-4 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden flex"
+      >
+        {% set percent_entregado = (e.total_entregados / e.total_participantes *
+        100) if e.total_participantes > 0 else 0 %}
+        <div
+          class="bg-blue-500 h-full"
+          style="width: {{ percent_entregado }}%"
+        ></div>
+      </div>
+      <p class="text-xs text-right text-gray-400 mt-1">
+        {{ percent_entregado|round|int }}% entregados
+      </p>
+    </div>
+
+    <div
+      class="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-2"
+    >
+      <a
+        href="{{ url_for('main.evento_detalle', event_id=e.id) }}"
+        class="text-gray-600 hover:text-blue-600 text-sm font-medium flex items-center gap-1 px-3 py-2 rounded-lg hover:bg-white transition-colors"
+      >
+        Ver lista
+        <i data-lucide="arrow-right" class="h-4 w-4"></i>
+      </a>
+
+      {% if e.pendientes_notificar > 0 %}
+      <form
+        action="{{ url_for('main.send_notifications_route', event_id=e.id) }}"
+        method="POST"
+        onsubmit="return confirm('¿Estás seguro de enviar correos a {{ e.pendientes_notificar }} personas pendientes?');"
+      >
+        <button
+          type="submit"
+          class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm flex items-center gap-2 transition-colors"
+        >
+          <i data-lucide="mail" class="h-4 w-4"></i>
+          Notificar ({{ e.pendientes_notificar }})
+        </button>
+      </form>
+      {% else %}
+      <button
+        disabled
+        class="bg-gray-200 text-gray-400 text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2 cursor-not-allowed"
+      >
+        <i data-lucide="check" class="h-4 w-4"></i>
+        Al día
+      </button>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div id="noResults" class="hidden text-center py-12">
+  <div class="bg-gray-100 rounded-full p-4 inline-flex mb-3">
+    <i data-lucide="search-x" class="h-8 w-8 text-gray-400"></i>
+  </div>
+  <h3 class="text-lg font-medium text-gray-900">No se encontraron eventos</h3>
+  <p class="text-gray-500">Intenta con otro término de búsqueda.</p>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const searchInput = document.getElementById("eventSearch");
+    const cards = document.querySelectorAll(".event-card");
+    const noResults = document.getElementById("noResults");
+
+    searchInput.addEventListener("keyup", function (e) {
+      const term = e.target.value.toLowerCase();
+      let hasVisible = false;
+
+      cards.forEach((card) => {
+        const title = card
+          .querySelector(".event-name")
+          .textContent.toLowerCase();
+        if (title.includes(term)) {
+          card.style.display = "flex"; // Flex porque las cards tienen flex-col
+          hasVisible = true;
+        } else {
+          card.style.display = "none";
+        }
+      });
+
+      if (!hasVisible) {
+        noResults.classList.remove("hidden");
+      } else {
+        noResults.classList.add("hidden");
+      }
+    });
+
+    // Refrescar iconos insertados dinamicamente si fuera necesario (aquí no lo es, pero buena practica)
+    lucide.createIcons();
+  });
+</script>
+
+{% endblock %}

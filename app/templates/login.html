@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="min-h-[85vh] flex flex-col items-center justify-center pt-10 pb-10">
+    <div class="w-full max-w-sm bg-white p-8 md:p-10 rounded-xl shadow-2xl border border-gray-100 transition-all duration-300">
+        
+        <div class="flex flex-col items-center justify-center mb-8">
+            <div class="bg-blue-600 text-white p-3 rounded-full mb-3 shadow-lg">
+                <i data-lucide="lock" class="h-6 w-6"></i>
+            </div>
+            <h2 class="text-3xl font-extrabold text-gray-900 tracking-tight">Acceso Administrativo</h2>
+            <p class="text-sm text-gray-500 mt-1">Sistema de Notificaciones UNASAM</p>
+        </div>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="mb-4">
+                    {% for message in messages %}
+                        <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-3 rounded-md text-sm" role="alert">
+                            <i data-lucide="alert-triangle" class="h-4 w-4 inline mr-2"></i>
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('main.login') }}" class="space-y-6">
+            
+            <div>
+                <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Usuario</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i data-lucide="user" class="h-5 w-5 text-gray-400"></i>
+                    </div>
+                    <input id="username" name="username" type="text" required
+                           class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm shadow-sm transition-all"
+                           placeholder="Ingresa tu usuario">
+                </div>
+            </div>
+            
+            <div>
+                <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i data-lucide="key-round" class="h-5 w-5 text-gray-400"></i>
+                    </div>
+                    <input id="password" name="password" type="password" required
+                           class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm shadow-sm transition-all"
+                           placeholder="••••••••">
+                </div>
+            </div>
+
+            <div>
+                <button type="submit" 
+                        class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out">
+                    <i data-lucide="log-in" class="h-5 w-5 mr-2"></i>
+                    Ingresar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Inicializa los iconos de Lucide
+    lucide.createIcons();
+</script>
+
+{% endblock %}
