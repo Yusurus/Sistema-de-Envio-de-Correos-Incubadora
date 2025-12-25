@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="mb-8">
+    <a href="{{ url_for('main.dashboard') }}" class="inline-flex items-center text-gray-500 hover:text-blue-600 mb-4 transition-colors text-sm font-medium">
+        <i data-lucide="arrow-left" class="h-4 w-4 mr-1"></i>
+        Volver al Dashboard
+    </a>
+    
+    <div class="flex items-center gap-3 mb-2">
+        <div class="bg-blue-100 p-3 rounded-lg text-blue-600">
+            <i data-lucide="settings" class="h-7 w-7"></i>
+        </div>
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Configuración de Email</h1>
+            <p class="text-gray-500 text-sm mt-1">Configura los datos de tu cuenta de Gmail para enviar notificaciones</p>
+        </div>
+    </div>
+</div>
+
+<div class="max-w-3xl">
+    <!-- Información importante -->
+    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-r-lg">
+        <div class="flex items-start">
+            <div class="flex-shrink-0">
+                <i data-lucide="info" class="h-5 w-5 text-blue-600 mt-0.5"></i>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm font-semibold text-blue-800 mb-1">Información importante</h3>
+                <div class="text-sm text-blue-700 space-y-1">
+                    <p>• Los cambios se guardan en el archivo <code class="bg-blue-100 px-1 rounded">.env</code> y persisten aunque reinicies la aplicación.</p>
+                    <p>• Para obtener la contraseña de aplicación de Gmail:</p>
+                    <ol class="list-decimal ml-5 mt-1 space-y-0.5">
+                        <li>Ve a tu <a href="https://myaccount.google.com/security" target="_blank" class="underline font-medium">Cuenta de Google → Seguridad</a></li>
+                        <li>Activa la verificación en 2 pasos</li>
+                        <li>Busca "Contraseñas de aplicaciones" y genera una nueva</li>
+                        <li>Copia la contraseña de 16 caracteres aquí</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulario de configuración -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+            <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <i data-lucide="mail" class="h-5 w-5 text-gray-600"></i>
+                Credenciales de Gmail
+            </h2>
+        </div>
+        
+        <form action="{{ url_for('main.actualizar_configuracion') }}" method="POST" class="p-6 space-y-6">
+            <!-- Email de Gmail -->
+            <div>
+                <label for="gmail_user" class="block text-sm font-medium text-gray-700 mb-2">
+                    <i data-lucide="user" class="h-4 w-4 inline mr-1"></i>
+                    Correo de Gmail
+                </label>
+                <input type="email" 
+                       name="gmail_user" 
+                       id="gmail_user" 
+                       value="{{ gmail_user }}"
+                       required
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                       placeholder="tu_correo@gmail.com">
+                <p class="mt-1 text-xs text-gray-500">Este es el correo desde el cual se enviarán las notificaciones</p>
+            </div>
+
+            <!-- Contraseña de aplicación -->
+            <div>
+                <label for="gmail_password" class="block text-sm font-medium text-gray-700 mb-2">
+                    <i data-lucide="key" class="h-4 w-4 inline mr-1"></i>
+                    Contraseña de Aplicación de Gmail
+                </label>
+                <input type="text" 
+                       name="gmail_password" 
+                       id="gmail_password" 
+                       value="{{ gmail_password }}"
+                       required
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors font-mono text-sm"
+                       placeholder="xxxx xxxx xxxx xxxx">
+                <p class="mt-1 text-xs text-gray-500">Contraseña de 16 caracteres generada en tu cuenta de Google (no uses tu contraseña normal)</p>
+            </div>
+
+            <!-- Email remitente (nombre que aparece) -->
+            <div>
+                <label for="email_remitente" class="block text-sm font-medium text-gray-700 mb-2">
+                    <i data-lucide="mail-open" class="h-4 w-4 inline mr-1"></i>
+                    Email Remitente (Opcional)
+                </label>
+                <input type="email" 
+                       name="email_remitente" 
+                       id="email_remitente" 
+                       value="{{ email_remitente }}"
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                       placeholder="nombre_mostrado@gmail.com">
+                <p class="mt-1 text-xs text-gray-500">Si se especifica, este email aparecerá como remitente en lugar del GMAIL_USER</p>
+            </div>
+
+            <!-- Dirección de recojo -->
+            <div>
+                <label for="direccion_recojo" class="block text-sm font-medium text-gray-700 mb-2">
+                    <i data-lucide="map-pin" class="h-4 w-4 inline mr-1"></i>
+                    Dirección de Recojo de Certificados
+                </label>
+                <textarea name="direccion_recojo" 
+                          id="direccion_recojo" 
+                          rows="2"
+                          class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          placeholder="Av. Centenario N° 200, Independencia, Incubadora de Empresas">{{ direccion_recojo }}</textarea>
+                <p class="mt-1 text-xs text-gray-500">Esta dirección se mostrará en los correos de notificación</p>
+            </div>
+
+            <!-- Botones de acción -->
+            <div class="flex items-center justify-between pt-4 border-t border-gray-200">
+                <a href="{{ url_for('main.dashboard') }}" 
+                   class="text-gray-600 hover:text-gray-800 text-sm font-medium flex items-center gap-1 transition-colors">
+                    <i data-lucide="x" class="h-4 w-4"></i>
+                    Cancelar
+                </a>
+                <button type="submit" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2.5 rounded-lg shadow-sm flex items-center gap-2 transition-colors">
+                    <i data-lucide="save" class="h-5 w-5"></i>
+                    Guardar Configuración
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Información adicional -->
+    <div class="mt-6 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg">
+        <div class="flex items-start">
+            <div class="flex-shrink-0">
+                <i data-lucide="alert-triangle" class="h-5 w-5 text-yellow-600 mt-0.5"></i>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm font-semibold text-yellow-800 mb-1">Seguridad</h3>
+                <p class="text-sm text-yellow-700">
+                    Nunca compartas tu contraseña de aplicación. Si crees que fue comprometida, revócala inmediatamente desde tu cuenta de Google y genera una nueva.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estado actual -->
+    <div class="mt-6 bg-gray-100 rounded-lg p-4">
+        <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+            <i data-lucide="check-circle" class="h-4 w-4"></i>
+            Estado Actual de la Configuración
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            <div class="bg-white p-3 rounded border border-gray-200">
+                <span class="text-gray-500 block mb-1">Usuario Gmail:</span>
+                <span class="font-mono text-xs text-gray-900">{{ gmail_user or 'No configurado' }}</span>
+            </div>
+            <div class="bg-white p-3 rounded border border-gray-200">
+                <span class="text-gray-500 block mb-1">Contraseña:</span>
+                <span class="font-mono text-xs text-gray-900">{{ '●' * (gmail_password|length if gmail_password else 0) or 'No configurada' }}</span>
+            </div>
+            <div class="bg-white p-3 rounded border border-gray-200">
+                <span class="text-gray-500 block mb-1">Remitente:</span>
+                <span class="font-mono text-xs text-gray-900">{{ email_remitente or 'Usa Gmail User' }}</span>
+            </div>
+            <div class="bg-white p-3 rounded border border-gray-200">
+                <span class="text-gray-500 block mb-1">Dirección Recojo:</span>
+                <span class="text-xs text-gray-900">{{ direccion_recojo or 'No configurada' }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,7 +1,9 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, session
 from .models import db, Evento, Participacion, Notificacion, Participante
 from .services import process_notifications, process_single_notification
 from sqlalchemy import func, case
+import os
+import re
 
 main = Blueprint('main', __name__)
 
@@ -13,13 +15,25 @@ def index():
 def login():
     if request.method == 'POST':
         if request.form.get('username') == 'admin' and request.form.get('password') == 'admin':
+            session['logged_in'] = True
+            session['username'] = 'admin'
             return redirect(url_for('main.dashboard'))
         else:
             flash('Credenciales incorrectas')
     return render_template('login.html')
 
+@main.route('/logout')
+def logout():
+    session.clear()
+    flash('Sesión cerrada correctamente')
+    return redirect(url_for('main.login'))
+
 @main.route('/dashboard')
 def dashboard():
+    if not session.get('logged_in'):
+        flash('Debes iniciar sesión primero')
+        return redirect(url_for('main.login'))
+    
     # --- Métricas Generales ---
     total_eventos = Evento.query.count()
     total_participaciones = Participacion.query.count()
@@ -75,6 +89,10 @@ def dashboard():
 # --- NUEVA RUTA: Detalle del Evento y Lista de Participantes ---
 @main.route('/evento/<int:event_id>')
 def evento_detalle(event_id):
+    if not session.get('logged_in'):
+        flash('Debes iniciar sesión primero')
+        return redirect(url_for('main.login'))
+    
     evento = Evento.query.get_or_404(event_id)
     
     # Obtenemos participantes con datos de sus notificaciones
@@ -105,6 +123,10 @@ def evento_detalle(event_id):
 # --- NUEVA RUTA: Cambiar estado de entrega ---
 @main.route('/marcar_entregado/<int:participacion_id>')
 def marcar_entregado(participacion_id):
+    if not session.get('logged_in'):
+        flash('Debes iniciar sesión primero')
+        return redirect(url_for('main.login'))
+    
     participacion = Participacion.query.get_or_404(participacion_id)
     
     # Toggle logic (opcional) o solo marcar entregado
@@ -121,6 +143,10 @@ def marcar_entregado(participacion_id):
 
 @main.route('/send_notifications/<int:event_id>', methods=['POST'])
 def send_notifications_route(event_id):
+    if not session.get('logged_in'):
+        flash('Debes iniciar sesión primero')
+        return redirect(url_for('main.login'))
+    
     results = process_notifications(event_id)
     flash(f"Proceso completado. Enviados: {results['success']}, Fallidos: {results['failed']}. (Los ya entregados fueron ignorados)")
     return redirect(url_for('main.dashboard'))
@@ -128,6 +154,10 @@ def send_notifications_route(event_id):
 
 @main.route('/resend_notifications/<int:event_id>', methods=['POST'])
 def resend_notifications_route(event_id):
+    if not session.get('logged_in'):
+        flash('Debes iniciar sesión primero')
+        return redirect(url_for('main.login'))
+    
     # Reenvía correos incluso a quienes ya fueron notificados previamente
     results = process_notifications(event_id, force=True)
     flash(f"Reenvío completado. Enviados: {results['success']}, Fallidos: {results['failed']}. Se incluyeron notificados previos.")
@@ -136,6 +166,10 @@ def resend_notifications_route(event_id):
 
 @main.route('/resend_notification/participacion/<int:participacion_id>', methods=['POST'])
 def resend_notification_participacion_route(participacion_id):
+    if not session.get('logged_in'):
+        flash('Debes iniciar sesión primero')
+        return redirect(url_for('main.login'))
+    
     # Determinar el evento para redirigir correctamente
     participacion = Participacion.query.get_or_404(participacion_id)
     result = process_single_notification(participacion_id, force=True)
@@ -144,3 +178,90 @@ def resend_notification_participacion_route(participacion_id):
     else:
         flash(f"No se pudo enviar a {participacion.participante.nombre_normalizado}: {result.get('error')}")
     return redirect(url_for('main.evento_detalle', event_id=participacion.evento_id))
+
+
+@main.route('/configuracion', methods=['GET'])
+def configuracion():
+    if not session.get('logged_in'):
+        flash('Debes iniciar sesión primero')
+        return redirect(url_for('main.login'))
+    
+    # Obtener valores actuales del .env
+    gmail_user = os.environ.get('GMAIL_USER', '')
+    gmail_password = os.environ.get('GMAIL_APP_PASSWORD', '')
+    email_remitente = os.environ.get('EMAIL_REMITENTE_REAL', '')
+    direccion_recojo = os.environ.get('DIRECCION_RECOJO', '')
+    
+    return render_template('configuracion.html', 
+                         gmail_user=gmail_user,
+                         gmail_password=gmail_password,
+                         email_remitente=email_remitente,
+                         direccion_recojo=direccion_recojo)
+
+
+@main.route('/configuracion/actualizar', methods=['POST'])
+def actualizar_configuracion():
+    if not session.get('logged_in'):
+        flash('Debes iniciar sesión primero')
+        return redirect(url_for('main.login'))
+    
+    gmail_user = request.form.get('gmail_user', '').strip()
+    gmail_password = request.form.get('gmail_password', '').strip()
+    email_remitente = request.form.get('email_remitente', '').strip()
+    direccion_recojo = request.form.get('direccion_recojo', '').strip()
+    
+    # Validar que los campos no estén vacíos
+    if not gmail_user or not gmail_password:
+        flash('El usuario y contraseña de Gmail son obligatorios')
+        return redirect(url_for('main.configuracion'))
+    
+    # Actualizar el archivo .env
+    env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env')
+    
+    try:
+        # Leer el contenido actual del .env
+        if os.path.exists(env_path):
+            with open(env_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+        else:
+            lines = []
+        
+        # Diccionario de valores a actualizar
+        updates = {
+            'GMAIL_USER': gmail_user,
+            'GMAIL_APP_PASSWORD': gmail_password,
+            'EMAIL_REMITENTE_REAL': email_remitente,
+            'DIRECCION_RECOJO': f'"{direccion_recojo}"' if direccion_recojo else '""'
+        }
+        
+        # Actualizar o agregar cada variable
+        for key, value in updates.items():
+            found = False
+            for i, line in enumerate(lines):
+                if line.strip().startswith(f'{key}='):
+                    lines[i] = f'{key}={value}\n'
+                    found = True
+                    break
+            if not found:
+                lines.append(f'{key}={value}\n')
+        
+        # Escribir el archivo actualizado
+        with open(env_path, 'w', encoding='utf-8') as f:
+            f.writelines(lines)
+        
+        # Actualizar las variables de entorno en el proceso actual
+        os.environ['GMAIL_USER'] = gmail_user
+        os.environ['GMAIL_APP_PASSWORD'] = gmail_password
+        os.environ['EMAIL_REMITENTE_REAL'] = email_remitente
+        os.environ['DIRECCION_RECOJO'] = direccion_recojo
+        
+        # Actualizar la configuración de Flask
+        current_app.config['MAIL_USERNAME'] = gmail_user
+        current_app.config['MAIL_PASSWORD'] = gmail_password
+        current_app.config['MAIL_DEFAULT_SENDER'] = email_remitente
+        
+        flash('Configuración actualizada correctamente. Los cambios están activos.')
+    except Exception as e:
+        flash(f'Error al actualizar la configuración: {str(e)}')
+    
+    return redirect(url_for('main.configuracion'))
