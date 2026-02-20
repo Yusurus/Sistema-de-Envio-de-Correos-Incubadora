@@ -4,6 +4,7 @@ from .services import process_notifications, process_single_notification
 from sqlalchemy import func, case
 import os
 import re
+import pymysql
 
 main = Blueprint('main', __name__)
 
@@ -86,7 +87,7 @@ def dashboard():
                            metrics={'total_eventos': total_eventos, 'total_participaciones': total_participaciones},
                            eventos=eventos_data)
 
-# --- NUEVA RUTA: Detalle del Evento y Lista de Participantes ---
+# ---Detalle del Evento y Lista de Participantes ---
 @main.route('/evento/<int:event_id>')
 def evento_detalle(event_id):
     if not session.get('logged_in'):
@@ -120,7 +121,7 @@ def evento_detalle(event_id):
         
     return render_template('evento_detalle.html', evento=evento, participantes=lista_participantes)
 
-# --- NUEVA RUTA: Cambiar estado de entrega ---
+# ---Cambiar estado de entrega ---
 @main.route('/marcar_entregado/<int:participacion_id>')
 def marcar_entregado(participacion_id):
     if not session.get('logged_in'):
@@ -186,12 +187,34 @@ def configuracion():
         flash('Debes iniciar sesión primero')
         return redirect(url_for('main.login'))
     
-    # Obtener valores actuales del .env
-    gmail_user = os.environ.get('GMAIL_USER', '')
-    gmail_password = os.environ.get('GMAIL_APP_PASSWORD', '')
-    email_remitente = os.environ.get('EMAIL_REMITENTE_REAL', '')
-    direccion_recojo = os.environ.get('DIRECCION_RECOJO', '')
-    
+    # Conexión directa a la BD para obtener los valores actuales
+    try:
+        connection = pymysql.connect(
+            host=current_app.config['DB_HOST'],
+            user=current_app.config['DB_USER'],
+            password=current_app.config['DB_PASSWORD'],
+            database=current_app.config['DB_NAME'],
+            port=int(current_app.config['DB_PORT']),
+            cursorclass=pymysql.cursors.DictCursor
+        )
+        with connection.cursor() as cursor:
+            # Usamos el nombre de tabla y columna que pusiste en tu Config
+            cursor.execute("SELECT * FROM configuraciones WHERE idconfiguracion = 1")
+            db_config = cursor.fetchone()
+            
+            if db_config:
+                gmail_user = db_config.get('gmail_user', '')
+                gmail_password = db_config.get('gmail_app_password', '')
+                email_remitente = db_config.get('email_remitente_real', '')
+                direccion_recojo = db_config.get('direccion_recojo', '')
+            else:
+                # Si no hay nada en la BD, mostramos vacío
+                gmail_user = gmail_password = email_remitente = direccion_recojo = ""
+        connection.close()
+    except Exception as e:
+        flash(f"Error al cargar configuración desde la base de datos: {e}")
+        gmail_user = gmail_password = email_remitente = direccion_recojo = ""
+
     return render_template('configuracion.html', 
                          gmail_user=gmail_user,
                          gmail_password=gmail_password,
@@ -205,63 +228,58 @@ def actualizar_configuracion():
         flash('Debes iniciar sesión primero')
         return redirect(url_for('main.login'))
     
+    # Captura de datos del formulario
     gmail_user = request.form.get('gmail_user', '').strip()
     gmail_password = request.form.get('gmail_password', '').strip()
     email_remitente = request.form.get('email_remitente', '').strip()
     direccion_recojo = request.form.get('direccion_recojo', '').strip()
     
-    # Validar que los campos no estén vacíos
     if not gmail_user or not gmail_password:
         flash('El usuario y contraseña de Gmail son obligatorios')
         return redirect(url_for('main.configuracion'))
-    
-    # Actualizar el archivo .env
-    env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env')
-    
+
+    # Conexión directa a la BD usando los parámetros de Config
     try:
-        # Leer el contenido actual del .env
-        if os.path.exists(env_path):
-            with open(env_path, 'r', encoding='utf-8') as f:
-                lines = f.readlines()
-        else:
-            lines = []
+        connection = pymysql.connect(
+            host=current_app.config['DB_HOST'],
+            user=current_app.config['DB_USER'],
+            password=current_app.config['DB_PASSWORD'],
+            database=current_app.config['DB_NAME'],
+            port=int(current_app.config['DB_PORT'])
+        )
         
-        # Diccionario de valores a actualizar
-        updates = {
-            'GMAIL_USER': gmail_user,
-            'GMAIL_APP_PASSWORD': gmail_password,
-            'EMAIL_REMITENTE_REAL': email_remitente,
-            'DIRECCION_RECOJO': f'"{direccion_recojo}"' if direccion_recojo else '""'
-        }
-        
-        # Actualizar o agregar cada variable
-        for key, value in updates.items():
-            found = False
-            for i, line in enumerate(lines):
-                if line.strip().startswith(f'{key}='):
-                    lines[i] = f'{key}={value}\n'
-                    found = True
-                    break
-            if not found:
-                lines.append(f'{key}={value}\n')
-        
-        # Escribir el archivo actualizado
-        with open(env_path, 'w', encoding='utf-8') as f:
-            f.writelines(lines)
-        
-        # Actualizar las variables de entorno en el proceso actual
-        os.environ['GMAIL_USER'] = gmail_user
-        os.environ['GMAIL_APP_PASSWORD'] = gmail_password
-        os.environ['EMAIL_REMITENTE_REAL'] = email_remitente
-        os.environ['DIRECCION_RECOJO'] = direccion_recojo
-        
-        # Actualizar la configuración de Flask
+        with connection.cursor() as cursor:
+            # SQL para actualizar la fila 1. 
+            # Usamos INSERT ... ON DUPLICATE KEY UPDATE por si el ID 1 no existe aún.
+            sql = """
+                INSERT INTO configuraciones (idconfiguracion, gmail_user, gmail_app_password, email_remitente_real, direccion_recojo)
+                VALUES (1, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE 
+                    gmail_user=%s, 
+                    gmail_app_password=%s, 
+                    email_remitente_real=%s, 
+                    direccion_recojo=%s
+            """
+            valores = (
+                gmail_user, gmail_password, email_remitente, direccion_recojo, # Para el INSERT
+                gmail_user, gmail_password, email_remitente, direccion_recojo  # Para el UPDATE
+            )
+            
+            cursor.execute(sql, valores)
+            connection.commit()
+
+        # Actualizar la configuración en memoria para que el cambio sea inmediato
         current_app.config['MAIL_USERNAME'] = gmail_user
         current_app.config['MAIL_PASSWORD'] = gmail_password
         current_app.config['MAIL_DEFAULT_SENDER'] = email_remitente
+        current_app.config['DIRECCION_RECOJO'] = direccion_recojo
         
-        flash('Configuración actualizada correctamente. Los cambios están activos.')
+        flash('Configuración actualizada en la base de datos.')
+        
     except Exception as e:
-        flash(f'Error al actualizar la configuración: {str(e)}')
+        flash(f'Error de conexión o SQL: {str(e)}')
+    finally:
+        if 'connection' in locals() and connection.open:
+            connection.close()
     
     return redirect(url_for('main.configuracion'))
