@@ -91,7 +91,7 @@ def process_notifications(event_id, force=False):
 
                 <div style="padding: 30px; color: #444444; line-height: 1.6;">
                     <p style="font-size: 16px; margin-bottom: 20px;">
-                    Hola, <strong>{participante.nombre_normalizado}</strong>:
+                    Hola, <strong>{participante.nombre_completo_original}</strong>:
                     </p>
                     
                     <p>
@@ -184,16 +184,18 @@ def process_single_notification(participacion_id, force=False):
             return {'success': False, 'error': 'Ya fue notificado previamente'}
 
     evento = p.evento
-    subject = f"Certificado Listo - {evento.nombre_evento}"
     
-    # USA EL MISMO HTML QUE process_notifications
+    # Asunto enfocado en "Recordatorio"
+    subject = f"Certificado Listo - {evento.nombre_evento}"
+    subject = f"RECORDATORIO: Certificado Listo - {evento.nombre_evento}"
+    
+    # Estructura de HTML enfocada en recordatorio
     body = f"""
         <!DOCTYPE html>
         <html>
         <head>
         <style>
             body {{ font-family: 'Helvetica', 'Arial', sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }}
-            .container {{ max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }}
             .header {{ background-color: #004aad; color: #ffffff; padding: 30px 20px; text-align: center; }}
             .content {{ padding: 30px; color: #444444; line-height: 1.6; }}
             .footer {{ background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #999999; border-top: 1px solid #eeeeee; }}
@@ -202,23 +204,40 @@ def process_single_notification(participacion_id, force=False):
         <body>
             <div style="background-color: #f4f4f4; padding: 20px;">
                 <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; font-family: Arial, sans-serif;">
+                    
                     <div style="background-color: #004aad; padding: 30px 20px; text-align: center;">
-                        <h1 style="color: #ffffff; margin: 0; font-size: 24px;">¡Tu certificado está listo! 🎓</h1>
+                        <h1 style="color: #ffffff; margin: 0; font-size: 24px;">¡Recordatorio de Certificado! 🎓</h1>
                     </div>
+
                     <div style="padding: 30px; color: #444444; line-height: 1.6;">
-                        <p style="font-size: 16px; margin-bottom: 20px;">Hola, <strong>{participante.nombre}</strong>:</p>
-                        <p>Nos complace informarte que tu certificado del evento <strong style="color: #004aad;">{evento.nombre_evento}</strong> ya ha sido emitido.</p>
+                        <p style="font-size: 16px; margin-bottom: 20px;">
+                            Hola, <strong>{participante.nombre_completo_original}</strong>:
+                        </p>
                         
+                        <p>
+                            Te enviamos este breve <strong>recordatorio</strong> para informarte que tu certificado del evento <strong style="color: #004aad;">{evento.nombre_evento}</strong> aún se encuentra disponible en nuestras oficinas para ser recogido.
+                        </p>
+                        
+                        <p>
+                            Si ya pasaste por él en las últimas horas, por favor ignora este mensaje. De lo contrario, te esperamos en el siguiente punto:
+                        </p>
+
                         <div style="background-color: #f0f8ff; border-radius: 6px; padding: 20px; margin: 25px 0; text-align: center; border: 1px solid #dceefc;">
-                            <p style="margin: 0 0 10px 0; font-weight: bold; color: #004aad;">📍 Instrucciones de recojo:</p>
+                            <p style="margin: 0 0 10px 0; font-weight: bold; color: #004aad;">📍 Punto de recojo:</p>
                             <p style="margin: 0; font-size: 14px;">
-                                Oficina principal: {current_app.config.get('DIRECCION_RECOJO', 'Oficina de Incubadora')}<br>
+                                {current_app.config.get('DIRECCION_RECOJO', 'Oficina de Incubadora')}<br>
                                 <em>(Horario: Lun-Vie 9:00am - 5:00pm)</em>
                             </p>
                         </div>
+
+                        <p style="margin-top: 30px;">
+                            ¡Gracias por tu participación!
+                        </p>
                     </div>
+
                     <div style="background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #999999;">
-                        <p>&copy; 2024 Organización del Evento</p>
+                        <p style="margin: 0;">Este es un mensaje automático de recordatorio.</p>
+                        <p style="margin: 5px 0 0 0;">&copy; 2024 Organización del Evento</p>
                     </div>
                 </div>
             </div>
