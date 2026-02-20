@@ -176,9 +176,9 @@ def resend_notification_participacion_route(participacion_id):
     participacion = Participacion.query.get_or_404(participacion_id)
     result = process_single_notification(participacion_id, force=True)
     if result.get('success'):
-        flash(f"Notificación reenviada a {participacion.participante.nombre_normalizado} ({participacion.participante.email}).")
+        flash(f"Notificación reenviada a {participacion.participante.nombre_completo_original} ({participacion.participante.email}).")
     else:
-        flash(f"No se pudo enviar a {participacion.participante.nombre_normalizado}: {result.get('error')}")
+        flash(f"No se pudo enviar a {participacion.participante.nombre_completo_original}: {result.get('error')}")
     return redirect(url_for('main.evento_detalle', event_id=participacion.evento_id))
 
 
