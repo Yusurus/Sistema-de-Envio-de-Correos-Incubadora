@@ -112,7 +112,8 @@ def evento_detalle(event_id):
     for p, part, count_notif in query:
         lista_participantes.append({
             'participacion_id': p.id,
-            'nombre': part.nombre_normalizado,
+            #'nombre': part.nombre_normalizado,
+            'nombre': part.nombre_completo_original,
             'email': part.email,
             'estado_certificado': p.estado_certificado, # Impreso, Generado, etc
             'estado': p.estado,         # PENDIENTE / ENTREGADO

@@ -185,32 +185,46 @@ def process_single_notification(participacion_id, force=False):
 
     evento = p.evento
     subject = f"Certificado Listo - {evento.nombre_evento}"
+    
+    # USA EL MISMO HTML QUE process_notifications
     body = f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-            <style>
-                body {{ font-family: 'Helvetica', 'Arial', sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }}
-            </style>
-            </head>
-            <body>
-            <div style=\"background-color: #f4f4f4; padding: 20px;\"> 
-              <div style=\"max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; font-family: Arial, sans-serif;\">
-                <div style=\"background-color: #004aad; padding: 24px; text-align: center; color: #fff;\">Tu certificado está listo</div>
-                <div style=\"padding: 24px; color: #333;\">
-                  Hola, <strong>{participante.nombre_normalizado}</strong>.<br/>
-                  Tu certificado del evento <strong>{evento.nombre_evento}</strong> está disponible para recojo.
-                  <div style=\"margin-top: 12px; font-size: 13px; color: #555;\">
-                    Dirección: {os.environ.get('DIRECCION_RECOJO')}<br/>
-                    Horario sugerido: Lun-Vie 9:00-17:00
-                  </div>
+        <!DOCTYPE html>
+        <html>
+        <head>
+        <style>
+            body {{ font-family: 'Helvetica', 'Arial', sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }}
+            .container {{ max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }}
+            .header {{ background-color: #004aad; color: #ffffff; padding: 30px 20px; text-align: center; }}
+            .content {{ padding: 30px; color: #444444; line-height: 1.6; }}
+            .footer {{ background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #999999; border-top: 1px solid #eeeeee; }}
+        </style>
+        </head>
+        <body>
+            <div style="background-color: #f4f4f4; padding: 20px;">
+                <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; font-family: Arial, sans-serif;">
+                    <div style="background-color: #004aad; padding: 30px 20px; text-align: center;">
+                        <h1 style="color: #ffffff; margin: 0; font-size: 24px;">¡Tu certificado está listo! 🎓</h1>
+                    </div>
+                    <div style="padding: 30px; color: #444444; line-height: 1.6;">
+                        <p style="font-size: 16px; margin-bottom: 20px;">Hola, <strong>{participante.nombre}</strong>:</p>
+                        <p>Nos complace informarte que tu certificado del evento <strong style="color: #004aad;">{evento.nombre_evento}</strong> ya ha sido emitido.</p>
+                        
+                        <div style="background-color: #f0f8ff; border-radius: 6px; padding: 20px; margin: 25px 0; text-align: center; border: 1px solid #dceefc;">
+                            <p style="margin: 0 0 10px 0; font-weight: bold; color: #004aad;">📍 Instrucciones de recojo:</p>
+                            <p style="margin: 0; font-size: 14px;">
+                                Oficina principal: {current_app.config.get('DIRECCION_RECOJO', 'Oficina de Incubadora')}<br>
+                                <em>(Horario: Lun-Vie 9:00am - 5:00pm)</em>
+                            </p>
+                        </div>
+                    </div>
+                    <div style="background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #999999;">
+                        <p>&copy; 2024 Organización del Evento</p>
+                    </div>
                 </div>
-                <div style=\"background:#f8f9fa; padding: 16px; text-align:center; font-size:12px; color:#777;\">Mensaje automático</div>
-              </div>
             </div>
-            </body>
-            </html>
-            """
+        </body>
+        </html>
+    """
 
     success, error = send_email(participante.email, subject, body)
     estado_notif = 'Enviado' if success else 'Fallido'
