@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="mb-6">
+        <a href="{{ url_for('controladores.gestionar_participantes_evento', evento_id=evento.id) }}" class="inline-flex items-center text-gray-500 hover:text-blue-600 text-sm font-medium transition-colors mb-4">
+            <i data-lucide="arrow-left" class="h-4 w-4 mr-1"></i>
+            Volver a asociación de participantes
+        </a>
+        <h1 class="text-3xl font-bold text-gray-900">Editar participación</h1>
+        <p class="text-gray-500 text-sm mt-2">Evento: <span class="font-semibold text-gray-700">{{ evento.nombre_evento }}</span></p>
+        <p class="text-gray-500 text-sm">Participante: <span class="font-semibold text-gray-700">{{ participacion.participante.nombre_completo_original or participacion.participante.nombre_normalizado }}</span></p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2">
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+                <form method="POST" class="space-y-6">
+                    <div class="border-b border-gray-200 pb-4">
+                        <h2 class="text-lg font-semibold text-gray-900 mb-4">Información de participación</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2" for="rol">Rol</label>
+                                <input id="rol" name="rol" type="text" value="{{ participacion.rol or '' }}" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" placeholder="Ej. Ponente, Moderador, Asistente">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2" for="horas_academicas">Horas académicas</label>
+                                <input id="horas_academicas" name="horas_academicas" type="text" value="{{ participacion.horas_academicas or '' }}" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" placeholder="Ej. 8, 16, etc.">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-b border-gray-200 pb-4">
+                        <h2 class="text-lg font-semibold text-gray-900 mb-4">Información del certificado</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2" for="certificado_url">URL del certificado</label>
+                                <input id="certificado_url" name="certificado_url" type="url" value="{{ participacion.certificado_url or '' }}" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" placeholder="https://ejemplo.com/certificado.pdf">
+                                <p class="text-xs text-gray-500 mt-1">Enlace al certificado generado o almacenado.</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2" for="qr_token">Token QR</label>
+                                <input id="qr_token" name="qr_token" type="text" value="{{ participacion.qr_token or '' }}" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" placeholder="Código o token único para el QR">
+                                <p class="text-xs text-gray-500 mt-1">Identificador único para el código QR del certificado.</p>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2" for="estado_certificado">Estado del certificado</label>
+                                    <select id="estado_certificado" name="estado_certificado" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                                        <option value="Sin Aciones" {% if participacion.estado_certificado == 'Sin Aciones' %}selected{% endif %}>Sin Aciones</option>
+                                        <option value="Generado" {% if participacion.estado_certificado == 'Generado' %}selected{% endif %}>Generado</option>
+                                        <option value="Impreso" {% if participacion.estado_certificado == 'Impreso' %}selected{% endif %}>Impreso</option>
+                                        <option value="Firmado" {% if participacion.estado_certificado == 'Firmado' %}selected{% endif %}>Firmado</option>
+                                        <option value="Escaneado" {% if participacion.estado_certificado == 'Escaneado' %}selected{% endif %}>Escaneado</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2" for="estado">Estado de entrega</label>
+                                    <select id="estado" name="estado" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                                        <option value="PENDIENTE" {% if participacion.estado == 'PENDIENTE' %}selected{% endif %}>Pendiente</option>
+                                        <option value="ENTREGADO" {% if participacion.estado == 'ENTREGADO' %}selected{% endif %}>Entregado</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-3 pt-2">
+                        <a href="{{ url_for('controladores.gestionar_participantes_evento', evento_id=evento.id) }}" class="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium transition-colors">
+                            Cancelar
+                        </a>
+                        <button type="submit" class="px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm transition-colors">
+                            Guardar cambios
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="lg:col-span-1">
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-5 sticky top-24 space-y-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Detalles del participante</h3>
+                </div>
+
+                <div class="space-y-3">
+                    <div>
+                        <p class="text-xs uppercase tracking-wider text-gray-500 font-semibold">Nombre original</p>
+                        <p class="text-sm font-medium text-gray-900">{{ participacion.participante.nombre_completo_original or participacion.participante.nombre_normalizado }}</p>
+                    </div>
+
+                    <div>
+                        <p class="text-xs uppercase tracking-wider text-gray-500 font-semibold">Nombre normalizado</p>
+                        <p class="text-sm font-medium text-gray-900">{{ participacion.participante.nombre_normalizado }}</p>
+                    </div>
+
+                    <div>
+                        <p class="text-xs uppercase tracking-wider text-gray-500 font-semibold">Email</p>
+                        <p class="text-sm text-gray-700">{{ participacion.participante.email or 'No disponible' }}</p>
+                    </div>
+
+                    <div>
+                        <p class="text-xs uppercase tracking-wider text-gray-500 font-semibold">Teléfono</p>
+                        <p class="text-sm text-gray-700">{{ participacion.participante.telefono or 'No disponible' }}</p>
+                    </div>
+
+                    <div class="pt-3 border-t border-gray-200">
+                        <p class="text-xs uppercase tracking-wider text-gray-500 font-semibold">Fecha de registro</p>
+                        <p class="text-sm text-gray-700">{{ participacion.fecha_registro.strftime('%d/%m/%Y %H:%M') if participacion.fecha_registro else 'No registrada' }}</p>
+                    </div>
+                </div>
+
+                <div class="rounded-lg bg-blue-50 border border-blue-200 p-3 mt-4">
+                    <p class="text-sm text-blue-700"><span class="font-semibold">Nota:</span> Los cambios aquí se guardan inmediatamente. Si necesitas cambiar el participante, desasocia este y crea una nueva asociación.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

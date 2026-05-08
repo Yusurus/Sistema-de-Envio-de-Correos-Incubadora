@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-900">CRUD de Participantes</h1>
+        <p class="text-gray-500 text-sm mt-1">Administración básica de participantes registrados.</p>
+    </div>
+    <div class="flex gap-3">
+        <a href="{{ url_for('controladores.crear_participante') }}" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg shadow-sm transition-colors font-medium">
+            <i data-lucide="circle-plus" class="h-4 w-4"></i>
+            Nuevo participante
+        </a>
+        <a href="{{ url_for('controladores.listar_eventos') }}" class="inline-flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-4 py-2.5 rounded-lg shadow-sm transition-colors font-medium">
+            <i data-lucide="calendar" class="h-4 w-4"></i>
+            Eventos
+        </a>
+    </div>
+</div>
+
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Participante</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teléfono</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for participante in participantes %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4">
+                        <div class="text-sm font-semibold text-gray-900">{{ participante.nombre_completo_original or participante.nombre_normalizado }}</div>
+                        <div class="text-xs text-gray-500">{{ participante.nombre_normalizado }}</div>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-700">{{ participante.email or '-' }}</td>
+                    <td class="px-6 py-4 text-sm text-gray-700">{{ participante.telefono or '-' }}</td>
+                    <td class="px-6 py-4 text-right">
+                        <div class="flex items-center justify-end gap-2">
+                            <a href="{{ url_for('controladores.editar_participante', participante_id=participante.id) }}" class="inline-flex items-center gap-1 bg-amber-50 hover:bg-amber-100 text-amber-700 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors">
+                                <i data-lucide="pencil" class="h-4 w-4"></i>
+                                Editar
+                            </a>
+                            <form action="{{ url_for('controladores.eliminar_participante', participante_id=participante.id) }}" method="POST" onsubmit="return confirm('¿Eliminar este participante? También se eliminarán sus participaciones y notificaciones.');">
+                                <button type="submit" class="inline-flex items-center gap-1 bg-red-50 hover:bg-red-100 text-red-700 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors">
+                                    <i data-lucide="trash-2" class="h-4 w-4"></i>
+                                    Eliminar
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="px-6 py-12 text-center text-gray-500">
+                        No hay participantes registrados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

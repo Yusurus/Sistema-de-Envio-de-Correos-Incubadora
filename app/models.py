@@ -29,7 +29,7 @@ class Participacion(db.Model):
     horas_academicas = db.Column(db.String(50))
     certificado_url = db.Column(db.Text)
     qr_token = db.Column(db.String(100))
-    estado_certificado = db.Column(db.Enum('Generado','Impreso','Entregado','Firmado','Por Imprimir','Imprimir'), default='Generado')
+    estado_certificado = db.Column(db.Enum('Sin Aciones','Generado','Impreso','Firmado','Escaneado'), default='Sin Aciones')
     fecha_registro = db.Column(db.DateTime, default=datetime.utcnow)
     estado = db.Column(db.Enum('PENDIENTE','ENTREGADO'))
     
