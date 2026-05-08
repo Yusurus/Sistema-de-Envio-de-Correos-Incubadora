@@ -18,6 +18,10 @@
     </div>
 </div>
 
+<div class="mb-4">
+    <input id="searchEventsList" type="text" placeholder="Buscar evento por nombre, fecha o resolución..." class="w-full md:w-96 px-4 py-2.5 rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-sm transition-all">
+</div>
+
 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
@@ -31,7 +35,7 @@
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
                 {% for evento in eventos %}
-                <tr class="hover:bg-gray-50">
+                <tr class="hover:bg-gray-50 event-row" data-search="{{ (evento.nombre_evento or '') ~ ' ' ~ (evento.fecha_evento or '') ~ ' ' ~ (evento.resolucion or '') }}">
                     <td class="px-6 py-4">
                         <div class="text-sm font-semibold text-gray-900">{{ evento.nombre_evento }}</div>
                         <div class="text-xs text-gray-500">ID {{ evento.id }}</div>
@@ -64,8 +68,42 @@
                     </td>
                 </tr>
                 {% endfor %}
+                <tr id="noResultsEvents" class="hidden">
+                    <td colspan="4" class="px-6 py-12 text-center text-gray-500">
+                        No se encontraron eventos con ese criterio.
+                    </td>
+                </tr>
             </tbody>
         </table>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const searchInput = document.getElementById('searchEventsList');
+    const rows = Array.from(document.querySelectorAll('.event-row'));
+    const noResults = document.getElementById('noResultsEvents');
+
+    function filterRows() {
+        if (!rows.length) {
+            return;
+        }
+
+        const term = searchInput.value.trim().toLowerCase();
+        let visible = 0;
+
+        rows.forEach((row) => {
+            const matches = row.dataset.search.toLowerCase().includes(term);
+            row.style.display = matches ? '' : 'none';
+            if (matches) {
+                visible += 1;
+            }
+        });
+
+        noResults.classList.toggle('hidden', visible > 0);
+    }
+
+    searchInput.addEventListener('input', filterRows);
+});
+</script>
 {% endblock %}

@@ -32,7 +32,7 @@
                     <p class="text-sm text-gray-500">Marca varios participantes y asígnalos en un solo envío.</p>
                 </div>
                 <div class="flex items-center gap-2">
-                    <input id="searchParticipants" type="text" placeholder="Buscar participante..." class="w-full md:w-72 rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm">
+                    <input id="searchParticipants" type="text" placeholder="Buscar participante..." class="w-full md:w-72 px-4 py-2.5 rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-sm transition-all">
                 </div>
             </div>
 
@@ -41,11 +41,11 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2" for="rol">Rol común</label>
-                        <input id="rol" name="rol" type="text" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" placeholder="Opcional para los seleccionados">
+                        <input id="rol" name="rol" type="text" class="w-full px-4 py-2 rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all" placeholder="Opcional para los seleccionados">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2" for="horas_academicas">Horas académicas</label>
-                        <input id="horas_academicas" name="horas_academicas" type="text" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" placeholder="Opcional">
+                        <input id="horas_academicas" name="horas_academicas" type="text" class="w-full px-4 py-2 rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all" placeholder="Opcional">
                     </div>
                 </div>
 
@@ -60,13 +60,13 @@
                 <div id="participantsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[32rem] overflow-y-auto pr-1">
                     {% for participante in participantes_disponibles %}
                     {% set is_assigned = participante.id in assigned_ids %}
-                    <label class="participant-card flex items-start gap-3 rounded-xl border p-4 transition-colors {% if is_assigned %}border-green-200 bg-green-50/60{% else %}border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/40{% endif %}" data-search="{{ (participante.nombre_completo_original or participante.nombre_normalizado or '') ~ ' ' ~ (participante.nombre_normalizado or '') ~ ' ' ~ (participante.email or '') }}">
+                    <label class="participant-card flex items-start gap-3 rounded-xl border p-4 transition-colors {% if is_assigned %}border-green-200 bg-green-50/60{% else %}border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/40{% endif %}" data-search="{{ (participante.nombre_completo or '') ~ ' ' ~ (participante.email or '') }}">
                         <input type="checkbox" name="participante_ids" value="{{ participante.id }}" class="participant-checkbox mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500" {% if is_assigned %}disabled checked{% endif %}>
                         <div class="min-w-0 flex-1">
                             <div class="flex items-center justify-between gap-2">
                                 <div>
-                                    <div class="text-sm font-semibold text-gray-900 truncate">{{ participante.nombre_completo_original or participante.nombre_normalizado }}</div>
-                                    <div class="text-xs text-gray-500 truncate">{{ participante.email or participante.nombre_normalizado }}</div>
+                                    <div class="text-sm font-semibold text-gray-900 truncate">{{ participante.nombre_completo or participante.email or 'Sin nombre' }}</div>
+                                    <div class="text-xs text-gray-500 truncate">{{ participante.email or 'Sin email' }}</div>
                                 </div>
                                 {% if is_assigned %}
                                 <span class="text-[11px] font-semibold uppercase tracking-wider text-green-700 bg-green-100 px-2 py-1 rounded-full whitespace-nowrap">Asignado</span>
@@ -108,7 +108,7 @@
                         {% for participacion, participante in participantes_asignados %}
                         <tr>
                             <td class="px-6 py-4">
-                                <div class="text-sm font-semibold text-gray-900">{{ participante.nombre_completo_original or participante.nombre_normalizado }}</div>
+                                <div class="text-sm font-semibold text-gray-900">{{ participante.nombre_completo or participante.email or 'Sin nombre' }}</div>
                                 <div class="text-xs text-gray-500">{{ participante.email or '-' }}</div>
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-700">{{ participacion.rol or '-' }}</td>
@@ -177,34 +177,30 @@
         <div class="p-6 space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2" for="nombre_normalizado">Nombre normalizado</label>
-                    <input id="nombre_normalizado" name="nombre_normalizado" type="text" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" required>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2" for="nombre_completo_original">Nombre completo original</label>
-                    <input id="nombre_completo_original" name="nombre_completo_original" type="text" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                    <label class="block text-sm font-medium text-gray-700 mb-2" for="nombre_completo">Nombre completo</label>
+                    <input id="nombre_completo" name="nombre_completo" type="text" class="w-full px-4 py-2 rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all" required>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2" for="email">Email</label>
-                    <input id="email" name="email" type="email" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                    <input id="email" name="email" type="email" class="w-full px-4 py-2 rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2" for="telefono">Teléfono</label>
-                    <input id="telefono" name="telefono" type="text" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                    <input id="telefono" name="telefono" type="text" class="w-full px-4 py-2 rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all">
                 </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2" for="rol_quick">Rol</label>
-                    <input id="rol_quick" name="rol" type="text" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" placeholder="Opcional">
+                    <input id="rol_quick" name="rol" type="text" class="w-full px-4 py-2 rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all" placeholder="Opcional">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2" for="horas_quick">Horas académicas</label>
-                    <input id="horas_quick" name="horas_academicas" type="text" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" placeholder="Opcional">
+                    <input id="horas_quick" name="horas_academicas" type="text" class="w-full px-4 py-2 rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all" placeholder="Opcional">
                 </div>
             </div>
         </div>
@@ -224,7 +220,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const selectAll = document.getElementById('selectAllParticipants');
     const selectedCount = document.getElementById('selectedCount');
     const dialog = document.getElementById('quickAddDialog');
-    const openQuickAdd = document.getElementById('openQuickAdd');
     const openQuickAddInline = document.getElementById('openQuickAddInline');
     const closeQuickAdd = document.getElementById('closeQuickAdd');
     const cancelQuickAdd = document.getElementById('cancelQuickAdd');
@@ -267,10 +262,15 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    openQuickAdd.addEventListener('click', openDialog);
-    openQuickAddInline.addEventListener('click', openDialog);
-    closeQuickAdd.addEventListener('click', closeDialog);
-    cancelQuickAdd.addEventListener('click', closeDialog);
+    if (openQuickAddInline) {
+        openQuickAddInline.addEventListener('click', openDialog);
+    }
+    if (closeQuickAdd) {
+        closeQuickAdd.addEventListener('click', closeDialog);
+    }
+    if (cancelQuickAdd) {
+        cancelQuickAdd.addEventListener('click', closeDialog);
+    }
 
     updateSelectedCount();
     lucide.createIcons();

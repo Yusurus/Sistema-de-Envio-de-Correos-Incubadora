@@ -10,15 +10,20 @@ main = Blueprint('main', __name__)
 
 @main.route('/')
 def index():
+    if session.get('logged_in'):
+        return redirect(url_for('controladores.listar_eventos'))
     return redirect(url_for('main.login'))
 
 @main.route('/login', methods=['GET', 'POST'])
 def login():
+    if session.get('logged_in'):
+        return redirect(url_for('controladores.listar_eventos'))
+
     if request.method == 'POST':
         if request.form.get('username') == 'admin' and request.form.get('password') == 'admin':
             session['logged_in'] = True
             session['username'] = 'admin'
-            return redirect(url_for('main.dashboard'))
+            return redirect(url_for('controladores.listar_eventos'))
         else:
             flash('Credenciales incorrectas')
     return render_template('login.html')
@@ -112,8 +117,7 @@ def evento_detalle(event_id):
     for p, part, count_notif in query:
         lista_participantes.append({
             'participacion_id': p.id,
-            #'nombre': part.nombre_normalizado,
-            'nombre': part.nombre_completo_original,
+            'nombre': part.nombre_completo or part.email,
             'email': part.email,
             'estado_certificado': p.estado_certificado, # Impreso, Generado, etc
             'estado': p.estado,         # PENDIENTE / ENTREGADO
@@ -134,10 +138,10 @@ def marcar_entregado(participacion_id):
     # Toggle logic (opcional) o solo marcar entregado
     if participacion.estado == 'PENDIENTE':
         participacion.estado = 'ENTREGADO'
-        flash(f'Certificado entregado a {participacion.participante.nombre_normalizado}. Ya no recibirá notificaciones.')
+        flash(f"Certificado entregado a {participacion.participante.nombre_completo or participacion.participante.email}. Ya no recibirá notificaciones.")
     else:
         participacion.estado = 'PENDIENTE'
-        flash(f'Estado revertido a Pendiente para {participacion.participante.nombre_normalizado}.')
+        flash(f"Estado revertido a Pendiente para {participacion.participante.nombre_completo or participacion.participante.email}.")
         
     db.session.commit()
     # Redirigir de vuelta al detalle del evento
@@ -176,9 +180,9 @@ def resend_notification_participacion_route(participacion_id):
     participacion = Participacion.query.get_or_404(participacion_id)
     result = process_single_notification(participacion_id, force=True)
     if result.get('success'):
-        flash(f"Notificación reenviada a {participacion.participante.nombre_completo_original} ({participacion.participante.email}).")
+        flash(f"Notificación reenviada a {participacion.participante.nombre_completo or participacion.participante.email} ({participacion.participante.email}).")
     else:
-        flash(f"No se pudo enviar a {participacion.participante.nombre_completo_original}: {result.get('error')}")
+        flash(f"No se pudo enviar a {participacion.participante.nombre_completo or participacion.participante.email}: {result.get('error')}")
     return redirect(url_for('main.evento_detalle', event_id=participacion.evento_id))
 
 

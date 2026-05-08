@@ -91,7 +91,7 @@ def process_notifications(event_id, force=False):
 
                 <div style="padding: 30px; color: #444444; line-height: 1.6;">
                     <p style="font-size: 16px; margin-bottom: 20px;">
-                    Hola, <strong>{participante.nombre_completo_original}</strong>:
+                    Hola, <strong>{participante.nombre_completo or participante.email}</strong>:
                     </p>
                     
                     <p>
@@ -211,7 +211,7 @@ def process_single_notification(participacion_id, force=False):
 
                     <div style="padding: 30px; color: #444444; line-height: 1.6;">
                         <p style="font-size: 16px; margin-bottom: 20px;">
-                            Hola, <strong>{participante.nombre_completo_original}</strong>:
+                            Hola, <strong>{participante.nombre_completo or participante.email}</strong>:
                         </p>
                         
                         <p>

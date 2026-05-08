@@ -18,6 +18,10 @@
     </div>
 </div>
 
+<div class="mb-4">
+    <input id="searchParticipantsList" type="text" placeholder="Buscar participante por nombre, email o teléfono..." class="w-full md:w-96 px-4 py-2.5 rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-sm transition-all">
+</div>
+
 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
@@ -31,10 +35,10 @@
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
                 {% for participante in participantes %}
-                <tr class="hover:bg-gray-50">
+                <tr class="hover:bg-gray-50 participant-row" data-search="{{ (participante.nombre_completo or '') ~ ' ' ~ (participante.email or '') ~ ' ' ~ (participante.telefono or '') }}">
                     <td class="px-6 py-4">
-                        <div class="text-sm font-semibold text-gray-900">{{ participante.nombre_completo_original or participante.nombre_normalizado }}</div>
-                        <div class="text-xs text-gray-500">{{ participante.nombre_normalizado }}</div>
+                        <div class="text-sm font-semibold text-gray-900">{{ participante.nombre_completo or participante.email or 'Sin nombre' }}</div>
+                        <div class="text-xs text-gray-500">{{ participante.email or 'Sin email' }}</div>
                     </td>
                     <td class="px-6 py-4 text-sm text-gray-700">{{ participante.email or '-' }}</td>
                     <td class="px-6 py-4 text-sm text-gray-700">{{ participante.telefono or '-' }}</td>
@@ -60,8 +64,42 @@
                     </td>
                 </tr>
                 {% endfor %}
+                <tr id="noResultsParticipants" class="hidden">
+                    <td colspan="4" class="px-6 py-12 text-center text-gray-500">
+                        No se encontraron participantes con ese criterio.
+                    </td>
+                </tr>
             </tbody>
         </table>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const searchInput = document.getElementById('searchParticipantsList');
+    const rows = Array.from(document.querySelectorAll('.participant-row'));
+    const noResults = document.getElementById('noResultsParticipants');
+
+    function filterRows() {
+        if (!rows.length) {
+            return;
+        }
+
+        const term = searchInput.value.trim().toLowerCase();
+        let visible = 0;
+
+        rows.forEach((row) => {
+            const matches = row.dataset.search.toLowerCase().includes(term);
+            row.style.display = matches ? '' : 'none';
+            if (matches) {
+                visible += 1;
+            }
+        });
+
+        noResults.classList.toggle('hidden', visible > 0);
+    }
+
+    searchInput.addEventListener('input', filterRows);
+});
+</script>
 {% endblock %}

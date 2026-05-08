@@ -1,4 +1,5 @@
 from functools import wraps
+import unicodedata
 
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
@@ -24,6 +25,12 @@ def _clean_text(value):
     return (value or "").strip()
 
 
+def _participant_lookup_key(value):
+    normalized = unicodedata.normalize("NFKD", _clean_text(value))
+    ascii_text = normalized.encode("ascii", "ignore").decode("ascii")
+    return " ".join(ascii_text.lower().split())
+
+
 def _delete_event_dependencies(evento_id):
     participaciones = Participacion.query.filter_by(evento_id=evento_id).all()
     for participacion in participaciones:
@@ -38,27 +45,25 @@ def _delete_participant_dependencies(participante_id):
         db.session.delete(participacion)
 
 
-def _get_or_create_participante(nombre_normalizado, nombre_completo_original, email, telefono):
+def _get_or_create_participante(nombre_completo, email, telefono):
     participante = None
 
     if email:
         participante = Participante.query.filter(db.func.lower(Participante.email) == email.lower()).first()
 
-    if not participante and nombre_normalizado:
+    if not participante and nombre_completo:
         participante = Participante.query.filter(
-            db.func.lower(Participante.nombre_normalizado) == nombre_normalizado.lower()
+            db.func.lower(Participante.nombre_completo) == _participant_lookup_key(nombre_completo)
         ).first()
 
     if participante:
-        participante.nombre_normalizado = nombre_normalizado or participante.nombre_normalizado
-        participante.nombre_completo_original = nombre_completo_original or participante.nombre_completo_original
+        participante.nombre_completo = nombre_completo or participante.nombre_completo
         participante.email = email or participante.email
         participante.telefono = telefono or participante.telefono
         return participante, False
 
     participante = Participante(
-        nombre_normalizado=nombre_normalizado,
-        nombre_completo_original=nombre_completo_original,
+        nombre_completo=nombre_completo,
         email=email,
         telefono=telefono,
     )
@@ -164,19 +169,17 @@ def gestionar_participantes_evento(evento_id):
 
         try:
             if action == "crear_y_asignar":
-                nombre_normalizado = _clean_text(request.form.get("nombre_normalizado"))
-                nombre_completo_original = _clean_text(request.form.get("nombre_completo_original"))
+                nombre_completo = _clean_text(request.form.get("nombre_completo"))
                 email = _clean_text(request.form.get("email"))
                 telefono = _clean_text(request.form.get("telefono"))
                 rol = _clean_text(request.form.get("rol"))
                 horas_academicas = _clean_text(request.form.get("horas_academicas"))
 
-                if not nombre_normalizado:
-                    flash("El nombre normalizado es obligatorio")
+                if not nombre_completo:
+                    flash("El nombre completo es obligatorio")
                 else:
                     participante, creado = _get_or_create_participante(
-                        nombre_normalizado,
-                        nombre_completo_original,
+                        nombre_completo,
                         email,
                         telefono,
                     )
@@ -260,12 +263,12 @@ def gestionar_participantes_evento(evento_id):
         db.session.query(Participacion, Participante)
         .join(Participante)
         .filter(Participacion.evento_id == evento.id)
-        .order_by(Participante.nombre_completo_original.asc(), Participante.nombre_normalizado.asc())
+        .order_by(Participante.nombre_completo.asc(), Participante.email.asc())
         .all()
     )
 
     assigned_ids = [participante.id for _, participante in participantes_asignados]
-    participantes_disponibles = Participante.query.order_by(Participante.nombre_completo_original.asc(), Participante.nombre_normalizado.asc()).all()
+    participantes_disponibles = Participante.query.order_by(Participante.nombre_completo.asc(), Participante.email.asc()).all()
 
     return render_template(
         "controladores/evento_participantes.html",
@@ -341,18 +344,16 @@ def listar_participantes():
 @login_required
 def crear_participante():
     if request.method == "POST":
-        nombre_normalizado = _clean_text(request.form.get("nombre_normalizado"))
-        nombre_completo_original = _clean_text(request.form.get("nombre_completo_original"))
+        nombre_completo = _clean_text(request.form.get("nombre_completo"))
         email = _clean_text(request.form.get("email"))
         telefono = _clean_text(request.form.get("telefono"))
 
-        if not nombre_normalizado:
-            flash("El nombre normalizado es obligatorio")
+        if not nombre_completo:
+            flash("El nombre completo es obligatorio")
             return render_template("controladores/participante_form.html", participante=None)
 
         participante = Participante(
-            nombre_normalizado=nombre_normalizado,
-            nombre_completo_original=nombre_completo_original,
+            nombre_completo=nombre_completo,
             email=email,
             telefono=telefono,
         )
@@ -370,17 +371,15 @@ def editar_participante(participante_id):
     participante = Participante.query.get_or_404(participante_id)
 
     if request.method == "POST":
-        nombre_normalizado = _clean_text(request.form.get("nombre_normalizado"))
-        nombre_completo_original = _clean_text(request.form.get("nombre_completo_original"))
+        nombre_completo = _clean_text(request.form.get("nombre_completo"))
         email = _clean_text(request.form.get("email"))
         telefono = _clean_text(request.form.get("telefono"))
 
-        if not nombre_normalizado:
-            flash("El nombre normalizado es obligatorio")
+        if not nombre_completo:
+            flash("El nombre completo es obligatorio")
             return render_template("controladores/participante_form.html", participante=participante)
 
-        participante.nombre_normalizado = nombre_normalizado
-        participante.nombre_completo_original = nombre_completo_original
+        participante.nombre_completo = nombre_completo
         participante.email = email
         participante.telefono = telefono
         db.session.commit()

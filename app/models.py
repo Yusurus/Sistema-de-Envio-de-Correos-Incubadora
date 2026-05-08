@@ -13,8 +13,7 @@ class Evento(db.Model):
 class Participante(db.Model):
     __tablename__ = 'participantes'
     id = db.Column(db.Integer, primary_key=True)
-    nombre_normalizado = db.Column(db.String(255), nullable=False)
-    nombre_completo_original = db.Column(db.String(255))
+    nombre_completo = db.Column(db.String(255))
     email = db.Column(db.String(150))
     telefono = db.Column(db.String(20))
     
