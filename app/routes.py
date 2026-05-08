@@ -1,12 +1,263 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, session, send_file
 from .models import db, Evento, Participacion, Notificacion, Participante
 from .services import process_notifications, process_single_notification
 from sqlalchemy import func, case
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import cm
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from io import BytesIO
+from datetime import datetime
 import os
 import re
 import pymysql
 
 main = Blueprint('main', __name__)
+
+
+def _require_login():
+    if not session.get('logged_in'):
+        flash('Debes iniciar sesión primero')
+        return redirect(url_for('main.login'))
+    return None
+
+
+def _build_report_data():
+    summary = {
+        'total_eventos': Evento.query.count(),
+        'total_participantes': Participante.query.count(),
+        'total_participaciones': Participacion.query.count(),
+        'total_notificaciones_enviadas': Notificacion.query.filter_by(estado='Enviado').count(),
+        'total_certificados_entregados': Participacion.query.filter_by(estado='ENTREGADO').count(),
+    }
+
+    por_estado_certificado = db.session.query(
+        Participacion.estado_certificado,
+        func.count(Participacion.id)
+    ).group_by(Participacion.estado_certificado).order_by(Participacion.estado_certificado).all()
+
+    por_estado_entrega = db.session.query(
+        Participacion.estado,
+        func.count(Participacion.id)
+    ).group_by(Participacion.estado).order_by(Participacion.estado).all()
+
+    notificaciones_por_estado = db.session.query(
+        Notificacion.estado,
+        func.count(Notificacion.id)
+    ).group_by(Notificacion.estado).order_by(Notificacion.estado).all()
+
+    eventos = []
+    for evento in Evento.query.order_by(Evento.nombre_evento.asc()).all():
+        total_participantes = Participacion.query.filter_by(evento_id=evento.id).count()
+        entregados = Participacion.query.filter_by(evento_id=evento.id, estado='ENTREGADO').count()
+        notificados = db.session.query(Participacion).join(Notificacion).filter(
+            Participacion.evento_id == evento.id,
+            Notificacion.estado == 'Enviado'
+        ).distinct().count()
+        certificados_generados = Participacion.query.filter(
+            Participacion.evento_id == evento.id,
+            Participacion.estado_certificado.in_(['Generado', 'Impreso', 'Firmado', 'Escaneado'])
+        ).count()
+
+        eventos.append({
+            'id': evento.id,
+            'nombre': evento.nombre_evento,
+            'fecha': evento.fecha_evento,
+            'resolucion': evento.resolucion,
+            'total_participantes': total_participantes,
+            'entregados': entregados,
+            'notificados': notificados,
+            'certificados_generados': certificados_generados,
+        })
+
+    top_eventos = sorted(eventos, key=lambda item: item['total_participantes'], reverse=True)[:8]
+
+    participaciones = db.session.query(
+        Participacion,
+        Participante,
+        Evento
+    ).join(Participante).join(Evento).order_by(Participacion.fecha_registro.desc()).all()
+
+    return {
+        'summary': summary,
+        'eventos': eventos,
+        'top_eventos': top_eventos,
+        'por_estado_certificado': por_estado_certificado,
+        'por_estado_entrega': por_estado_entrega,
+        'notificaciones_por_estado': notificaciones_por_estado,
+        'participaciones': participaciones,
+    }
+
+
+def _style_excel_header(sheet, headers):
+    header_fill = PatternFill(fill_type='solid', fgColor='1D4ED8')
+    header_font = Font(color='FFFFFF', bold=True)
+    for column, header in enumerate(headers, start=1):
+        cell = sheet.cell(row=1, column=column, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+    sheet.freeze_panes = 'A2'
+
+
+def _build_summary_workbook(report_data):
+    workbook = Workbook()
+
+    summary_sheet = workbook.active
+    summary_sheet.title = 'Resumen'
+    summary_sheet['A1'] = 'Métrica'
+    summary_sheet['B1'] = 'Valor'
+    _style_excel_header(summary_sheet, ['Métrica', 'Valor'])
+
+    summary_rows = [
+        ('Total eventos', report_data['summary']['total_eventos']),
+        ('Total participantes', report_data['summary']['total_participantes']),
+        ('Total participaciones', report_data['summary']['total_participaciones']),
+        ('Notificaciones enviadas', report_data['summary']['total_notificaciones_enviadas']),
+        ('Certificados entregados', report_data['summary']['total_certificados_entregados']),
+    ]
+    for row_number, (label, value) in enumerate(summary_rows, start=2):
+        summary_sheet.cell(row=row_number, column=1, value=label)
+        summary_sheet.cell(row=row_number, column=2, value=value)
+
+    eventos_sheet = workbook.create_sheet('Eventos')
+    _style_excel_header(eventos_sheet, ['Evento', 'Fecha', 'Resolución', 'Participantes', 'Entregados', 'Notificados', 'Certificados generados'])
+    for row_number, evento in enumerate(report_data['eventos'], start=2):
+        eventos_sheet.cell(row=row_number, column=1, value=evento['nombre'])
+        eventos_sheet.cell(row=row_number, column=2, value=evento['fecha'])
+        eventos_sheet.cell(row=row_number, column=3, value=evento['resolucion'])
+        eventos_sheet.cell(row=row_number, column=4, value=evento['total_participantes'])
+        eventos_sheet.cell(row=row_number, column=5, value=evento['entregados'])
+        eventos_sheet.cell(row=row_number, column=6, value=evento['notificados'])
+        eventos_sheet.cell(row=row_number, column=7, value=evento['certificados_generados'])
+
+    participaciones_sheet = workbook.create_sheet('Participaciones')
+    _style_excel_header(participaciones_sheet, ['Evento', 'Participante', 'Email', 'Rol', 'Horas', 'Estado certificado', 'Estado entrega', 'Registro'])
+    for row_number, (participacion, participante, evento) in enumerate(report_data['participaciones'], start=2):
+        participaciones_sheet.cell(row=row_number, column=1, value=evento.nombre_evento)
+        participaciones_sheet.cell(row=row_number, column=2, value=participante.nombre_completo or participante.email)
+        participaciones_sheet.cell(row=row_number, column=3, value=participante.email)
+        participaciones_sheet.cell(row=row_number, column=4, value=participacion.rol)
+        participaciones_sheet.cell(row=row_number, column=5, value=participacion.horas_academicas)
+        participaciones_sheet.cell(row=row_number, column=6, value=participacion.estado_certificado)
+        participaciones_sheet.cell(row=row_number, column=7, value=participacion.estado)
+        participaciones_sheet.cell(row=row_number, column=8, value=participacion.fecha_registro.strftime('%d/%m/%Y %H:%M') if participacion.fecha_registro else '')
+
+    return workbook
+
+
+def _build_detailed_workbook(report_data):
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = 'Detalle'
+    _style_excel_header(sheet, ['Tipo', 'Nombre', 'Dato 1', 'Dato 2', 'Dato 3', 'Dato 4', 'Dato 5'])
+
+    row_number = 2
+    for evento in report_data['eventos']:
+        values = [
+            'Evento', evento['nombre'], evento['fecha'], evento['resolucion'], evento['total_participantes'], evento['entregados'], evento['notificados']
+        ]
+        for column, value in enumerate(values, start=1):
+            sheet.cell(row=row_number, column=column, value=value)
+        row_number += 1
+
+    for estado, cantidad in report_data['por_estado_certificado']:
+        sheet.cell(row=row_number, column=1, value='Estado certificado')
+        sheet.cell(row=row_number, column=2, value=estado)
+        sheet.cell(row=row_number, column=3, value=cantidad)
+        row_number += 1
+
+    for estado, cantidad in report_data['por_estado_entrega']:
+        sheet.cell(row=row_number, column=1, value='Estado entrega')
+        sheet.cell(row=row_number, column=2, value=estado)
+        sheet.cell(row=row_number, column=3, value=cantidad)
+        row_number += 1
+
+    for estado, cantidad in report_data['notificaciones_por_estado']:
+        sheet.cell(row=row_number, column=1, value='Notificación')
+        sheet.cell(row=row_number, column=2, value=estado)
+        sheet.cell(row=row_number, column=3, value=cantidad)
+        row_number += 1
+
+    top_sheet = workbook.create_sheet('Top Eventos')
+    _style_excel_header(top_sheet, ['Evento', 'Participantes', 'Entregados', 'Notificados', 'Certificados generados', 'Fecha'])
+    for row_number, evento in enumerate(report_data['top_eventos'], start=2):
+        top_sheet.cell(row=row_number, column=1, value=evento['nombre'])
+        top_sheet.cell(row=row_number, column=2, value=evento['total_participantes'])
+        top_sheet.cell(row=row_number, column=3, value=evento['entregados'])
+        top_sheet.cell(row=row_number, column=4, value=evento['notificados'])
+        top_sheet.cell(row=row_number, column=5, value=evento['certificados_generados'])
+        top_sheet.cell(row=row_number, column=6, value=evento['fecha'])
+
+    return workbook
+
+
+def _build_summary_pdf(report_data):
+    buffer = BytesIO()
+    document = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(A4),
+        rightMargin=1.2 * cm,
+        leftMargin=1.2 * cm,
+        topMargin=1.2 * cm,
+        bottomMargin=1.2 * cm,
+    )
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(name='ReportTitle', parent=styles['Title'], fontSize=20, textColor=colors.HexColor('#0F172A')))
+
+    elements = [
+        Paragraph('Reporte general de eventos y certificaciones', styles['ReportTitle']),
+        Spacer(1, 0.35 * cm),
+        Paragraph(f"Generado el {datetime.now().strftime('%d/%m/%Y %H:%M')}", styles['Normal']),
+        Spacer(1, 0.4 * cm),
+    ]
+
+    summary_table = [['Métrica', 'Valor']]
+    summary_table.extend([
+        ['Total eventos', str(report_data['summary']['total_eventos'])],
+        ['Total participantes', str(report_data['summary']['total_participantes'])],
+        ['Total participaciones', str(report_data['summary']['total_participaciones'])],
+        ['Notificaciones enviadas', str(report_data['summary']['total_notificaciones_enviadas'])],
+        ['Certificados entregados', str(report_data['summary']['total_certificados_entregados'])],
+    ])
+
+    summary = Table(summary_table, colWidths=[9 * cm, 6 * cm])
+    summary.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1D4ED8')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CBD5E1')),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#F8FAFC')),
+    ]))
+    elements.append(summary)
+    elements.append(Spacer(1, 0.5 * cm))
+
+    top_table_data = [['Evento', 'Participantes', 'Entregados', 'Notificados']]
+    for evento in report_data['top_eventos']:
+        top_table_data.append([
+            evento['nombre'],
+            str(evento['total_participantes']),
+            str(evento['entregados']),
+            str(evento['notificados']),
+        ])
+
+    top_table = Table(top_table_data, colWidths=[10 * cm, 3 * cm, 3 * cm, 3 * cm])
+    top_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0F172A')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CBD5E1')),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+    ]))
+    elements.append(Paragraph('Eventos con mayor volumen', styles['Heading2']))
+    elements.append(top_table)
+
+    document.build(elements)
+    buffer.seek(0)
+    return buffer
 
 @main.route('/')
 def index():
@@ -36,9 +287,9 @@ def logout():
 
 @main.route('/dashboard')
 def dashboard():
-    if not session.get('logged_in'):
-        flash('Debes iniciar sesión primero')
-        return redirect(url_for('main.login'))
+    login_redirect = _require_login()
+    if login_redirect:
+        return login_redirect
     
     # --- Métricas Generales ---
     total_eventos = Evento.query.count()
@@ -91,6 +342,80 @@ def dashboard():
     return render_template('dashboard.html', 
                            metrics={'total_eventos': total_eventos, 'total_participaciones': total_participaciones},
                            eventos=eventos_data)
+
+
+@main.route('/reportes')
+def reportes():
+    login_redirect = _require_login()
+    if login_redirect:
+        return login_redirect
+
+    report_data = _build_report_data()
+    chart_data = {
+        'labels_eventos': [evento['nombre'] for evento in report_data['top_eventos']],
+        'values_eventos': [evento['total_participantes'] for evento in report_data['top_eventos']],
+        'labels_certificado': [estado or 'Sin estado' for estado, _ in report_data['por_estado_certificado']],
+        'values_certificado': [cantidad for _, cantidad in report_data['por_estado_certificado']],
+        'labels_entrega': [estado or 'Sin estado' for estado, _ in report_data['por_estado_entrega']],
+        'values_entrega': [cantidad for _, cantidad in report_data['por_estado_entrega']],
+        'labels_notificaciones': [estado or 'Sin estado' for estado, _ in report_data['notificaciones_por_estado']],
+        'values_notificaciones': [cantidad for _, cantidad in report_data['notificaciones_por_estado']],
+    }
+    return render_template('reportes.html', report_data=report_data, chart_data=chart_data)
+
+
+@main.route('/reportes/resumen.xlsx')
+def descargar_reporte_resumen_excel():
+    login_redirect = _require_login()
+    if login_redirect:
+        return login_redirect
+
+    report_data = _build_report_data()
+    workbook = _build_summary_workbook(report_data)
+    buffer = BytesIO()
+    workbook.save(buffer)
+    buffer.seek(0)
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name='reporte_resumen.xlsx',
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
+
+@main.route('/reportes/resumen.pdf')
+def descargar_reporte_resumen_pdf():
+    login_redirect = _require_login()
+    if login_redirect:
+        return login_redirect
+
+    report_data = _build_report_data()
+    buffer = _build_summary_pdf(report_data)
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name='reporte_resumen.pdf',
+        mimetype='application/pdf'
+    )
+
+
+@main.route('/reportes/detallado.xlsx')
+def descargar_reporte_detallado_excel():
+    login_redirect = _require_login()
+    if login_redirect:
+        return login_redirect
+
+    report_data = _build_report_data()
+    workbook = _build_detailed_workbook(report_data)
+    buffer = BytesIO()
+    workbook.save(buffer)
+    buffer.seek(0)
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name='reporte_detallado.xlsx',
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
 
 # ---Detalle del Evento y Lista de Participantes ---
 @main.route('/evento/<int:event_id>')
